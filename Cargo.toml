@@ -1,0 +1,19 @@
+[package]
+name = "consolider"
+version = "0.1.0"
+edition = "2024"
+description = "Safely combine folder trees by relative path and content"
+license = "MIT"
+
+[dependencies]
+blake3 = "1.8"
+eframe = { version = "0.33", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+rfd = "0.15"
+walkdir = "2.5"
+
+[dev-dependencies]
+tempfile = "3.24"
+
+[profile.release]
+lto = "thin"
+strip = true
