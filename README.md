@@ -28,7 +28,7 @@ On macOS, install the Xcode Command Line Tools (`xcode-select --install`) and st
 1. Add source folders using **+ Add folders**, or drag folders into the window.
 2. Select an existing destination parent and name a **new** folder.
 3. Click **Analyze** and inspect the preview.
-4. Click **Copy**. Scanning, verification, and copying run in a background thread and can be cancelled.
+4. Click **Copy**. Scanning, verification, and copying run in a background thread. Click **Cancel** to stop the current operation; completed copies remain in the destination.
 
 ## Union rules
 

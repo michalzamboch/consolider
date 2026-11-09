@@ -100,6 +100,13 @@ impl ConsoliderApp {
         self.worker = Some(Worker::start(job, context.clone()));
     }
 
+    fn cancel(&mut self) {
+        if let Some(worker) = &self.worker {
+            worker.cancel();
+            self.cancelling = true;
+        }
+    }
+
     fn poll_worker(&mut self) {
         while let Some(event) = self.worker.as_ref().and_then(Worker::poll) {
             match event {
@@ -166,11 +173,7 @@ impl ConsoliderApp {
         self.header(context);
         self.footer(context);
         egui::CentralPanel::default()
-            .frame(
-                egui::Frame::new()
-                    .fill(theme::BACKGROUND)
-                    .inner_margin(egui::Margin::symmetric(24, 0)),
-            )
+            .frame(egui::Frame::new().fill(theme::BACKGROUND).inner_margin(24))
             .show(context, |ui| {
                 ui.add_enabled_ui(self.worker.is_none(), |ui| {
                     ui.columns(2, |columns| {

@@ -27,23 +27,7 @@ impl ConsoliderApp {
                     .inner_margin(egui::Margin::symmetric(24, 18)),
             )
             .show(context, |ui| {
-                if self.worker.is_some()
-                    && let Some(progress) = &self.progress
-                    && progress.phase == Phase::Copying
-                    && let Some(plan) = &self.plan
-                {
-                    let fraction = if plan.total_bytes() == 0 {
-                        progress.files as f32 / plan.files.len().max(1) as f32
-                    } else {
-                        progress.bytes as f32 / plan.total_bytes() as f32
-                    };
-                    ui.add(
-                        egui::ProgressBar::new(fraction.min(1.0))
-                            .fill(theme::ACCENT)
-                            .desired_height(3.0),
-                    );
-                    ui.add_space(6.0);
-                }
+                self.copy_progress(ui);
 
                 // Errors can span multiple lines; routine status stays in the toolbar.
                 let has_error =
@@ -58,25 +42,11 @@ impl ConsoliderApp {
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                             if self.worker.is_some() {
                                 ui.spinner();
-                                let status = self
-                                    .progress
-                                    .as_ref()
-                                    .map(|progress| {
-                                        let phase = match progress.phase {
-                                            Phase::Scanning => "Scanning",
-                                            Phase::Verifying => "Verifying",
-                                            Phase::Copying => "Copying",
-                                        };
-                                        format!(
-                                            "{phase} · {} files · {}",
-                                            progress.files,
-                                            theme::bytes(progress.bytes)
-                                        )
-                                    })
-                                    .unwrap_or_else(|| self.notice.clone());
                                 ui.add(
                                     egui::Label::new(
-                                        RichText::new(status).small().color(theme::MUTED),
+                                        RichText::new(self.worker_status())
+                                            .small()
+                                            .color(theme::MUTED),
                                     )
                                     .truncate(),
                                 );
@@ -96,28 +66,68 @@ impl ConsoliderApp {
             });
     }
 
-    fn actions(&mut self, ui: &mut egui::Ui, context: &egui::Context) {
-        if let Some(worker) = &self.worker {
-            if ui
-                .add_enabled(
-                    !self.cancelling,
-                    theme::button(if self.cancelling {
-                        "Cancelling…"
-                    } else {
-                        "Cancel"
-                    }),
-                )
-                .clicked()
-            {
-                worker.cancel();
-                self.cancelling = true;
-            }
-            return;
+    fn copy_progress(&self, ui: &mut egui::Ui) {
+        if self.worker.is_some()
+            && let Some(progress) = &self.progress
+            && progress.phase == Phase::Copying
+            && let Some(plan) = &self.plan
+        {
+            let fraction = if plan.total_bytes() == 0 {
+                progress.files as f32 / plan.files.len().max(1) as f32
+            } else {
+                progress.bytes as f32 / plan.total_bytes() as f32
+            };
+            ui.add(
+                egui::ProgressBar::new(fraction.min(1.0))
+                    .fill(theme::ACCENT)
+                    .desired_height(3.0),
+            );
+            ui.add_space(6.0);
         }
+    }
 
+    fn worker_status(&self) -> String {
+        if self.cancelling {
+            return "Cancelling…".into();
+        }
+        let Some(progress) = &self.progress else {
+            return self.notice.clone();
+        };
+        let phase = match progress.phase {
+            Phase::Scanning => "Scanning",
+            Phase::Verifying => "Verifying",
+            Phase::Copying => "Copying",
+        };
+        format!(
+            "{phase} · {} files · {}",
+            progress.files,
+            theme::bytes(progress.bytes)
+        )
+    }
+
+    fn cancel_button(&mut self, ui: &mut egui::Ui) {
+        let label = if self.cancelling {
+            "Cancelling…"
+        } else {
+            "Cancel"
+        };
         if ui
             .add_enabled(
-                self.plan.is_some() && !self.copied,
+                self.worker.is_some() && !self.cancelling,
+                theme::button(label),
+            )
+            .clicked()
+        {
+            self.cancel();
+        }
+    }
+
+    fn actions(&mut self, ui: &mut egui::Ui, context: &egui::Context) {
+        self.cancel_button(ui);
+        let busy = self.worker.is_some();
+        if ui
+            .add_enabled(
+                !busy && self.plan.is_some() && !self.copied,
                 theme::primary_button("Copy"),
             )
             .clicked()
@@ -128,7 +138,7 @@ impl ConsoliderApp {
         let destination = self.destination();
         if ui
             .add_enabled(
-                !self.sources.is_empty() && destination.is_some(),
+                !busy && !self.sources.is_empty() && destination.is_some(),
                 theme::button("Analyze"),
             )
             .clicked()

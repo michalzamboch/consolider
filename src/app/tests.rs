@@ -100,6 +100,7 @@ fn controls_fit_at_minimum_and_default_window_sizes() {
             "Browse",
             "Analyze",
             "Copy",
+            "Cancel",
         ] {
             let bounds = text_bounds(&output, label);
             assert!(
